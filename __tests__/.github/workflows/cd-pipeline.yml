@@ -1,0 +1,78 @@
+name: CD Pipeline to Google Cloud Run (staging and production)
+on:
+  push:
+    branches:
+      - staging
+  workflow_dispatch: {}
+  release:
+    types: published
+
+env:
+  PORT: 5001
+  IMAGE: ${{vars.IMAGE}}:${{github.sha}}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Setup, test, and build project
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test application
+        run: npm test
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    name: Setup project, Authorize GitHub Actions to GCP and Docker Hub, and deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Authenticate for GCP
+        id: gcp-auth
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+
+      - name: Authenticate for Docker Hub
+        id: docker-auth
+        env:
+          D_USER: ${{secrets.DOCKER_USER}}
+          D_PASS: ${{secrets.DOCKER_PASSWORD}}
+        run: |
+          docker login -u $D_USER -p $D_PASS
+      - name: Build and tag Image
+        run: |
+          docker build -t ${{env.IMAGE}} .
+      - name: Push the image to Docker hub
+        run: |
+          docker push ${{env.IMAGE}}
+      - name: Enable the Billing API
+        run: |
+          gcloud services enable cloudbilling.googleapis.com --project=${{secrets.GCP_PROJECT_ID}}
+      - name: Deploy to GCP Run - Production environment (If a new release was published from the master branch)
+        if: github.event_name == 'release' && github.event.action == 'published' && github.event.release.target_commitish == 'main'
+        run: |
+          gcloud run deploy ${{vars.GCR_PROJECT_NAME}} \
+          --region ${{vars.GCR_REGION}} \
+          --image ${{env.IMAGE}} \
+          --platform "managed" \
+          --allow-unauthenticated \
+          --tag production \
+      - name: Deploy to GCP Run - Staging environment
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Deploying to staging environment"
+          # Deploy service with to staging environment
+          gcloud run deploy ${{vars.GCR_STAGING_PROJECT_NAME}} \
+          --region ${{vars.GCR_REGION}} \
+          --image ${{env.IMAGE}} \
+          --platform "managed" \
+          --allow-unauthenticated \
+          --tag staging \

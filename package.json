@@ -1,5 +1,5 @@
 {
-  "name": "ci-cd-tutorial",
+  "name": "ci-cd-pipeline",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
