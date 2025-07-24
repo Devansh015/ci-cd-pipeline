@@ -5,7 +5,7 @@
 const request = require("supertest");
 const app = require("../app");
 
-describe("This is a test for the Node Js Web Server", () => {
+describe("This is a test for the Node JS Web Server", () => {
   test("Should return 200 response", async () => {
     const response = await request(app).get("/");
 

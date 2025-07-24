@@ -6,12 +6,11 @@
     "test": "jest",
     "start": "node ./index.js"
   },
-  "author": "Prince Onukwili",
+  "author": "Devansh",
   "license": "ISC",
   "description": "",
   "repository": {
-    "type": "git",
-    "url": "https://github.com/onukwilip/ci-cd-tutorial.git"
+    "type": "git"
   },
   "dependencies": {
     "cors": "^2.8.5",
